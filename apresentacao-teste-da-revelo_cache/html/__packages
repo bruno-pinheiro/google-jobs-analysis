@@ -1,0 +1,17 @@
+base
+dplyr
+tibble
+tidyr
+stringr
+purrr
+readr
+readxl
+tidytext
+ggplot2
+igraph
+ggraph
+cowplot
+RColorBrewer
+DT
+kableExtra
+sf

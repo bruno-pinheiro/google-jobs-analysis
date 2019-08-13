@@ -1,0 +1,649 @@
+---
+title: "Teste BI - Google Jobs"
+subtitle: "Processo seletivo para Data Analyst da Revelo"
+author: "Bruno Pinheiro"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: monokai
+      highlightLines: true
+      countIncrementalSlides: false
+      ratio: 16:9
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(warning = FALSE, error = FALSE,
+                      message = FALSE, echo = FALSE,
+                      cache = TRUE, comment = "",
+                      fig.retina = 2)
+```
+
+```{r}
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(readr)
+library(readxl)
+library(tidytext)
+library(ggplot2)
+library(igraph)
+library(ggraph)
+library(cowplot)
+library(RColorBrewer)
+library(DT)
+library(kableExtra)
+```
+
+```{r}
+# funções
+source("functions.R")
+```
+
+```{r}
+jobs <- read_excel("data/job_skills.xlsx")
+
+# Obter tabela com países e continentes do GitHub
+url_continents <- "https://raw.githubusercontent.com/dbouquin/IS_608/master/NanosatDB_munging/Countries-Continents.csv"
+
+# Corrigir nomes dos países
+continents <- read_csv(url_continents) %>% 
+  mutate(Country = gsub("CZ", "Czechia", Country),
+         Country = gsub("Russian Federation", "Russia", Country),
+         Country = gsub("Korea, South", "South Korea", Country),
+         Country = gsub("US", "USA", Country))
+
+# Corrigir inexistentes
+continents[195,] <- c("Asia", "Hong Kong")
+continents[196,] <- c("Asia", "Taiwan")
+
+# limpar duplicatas, adicionar id de anúncio e mesclar os dados
+jobs <- jobs %>% 
+  filter(!duplicated(jobs), !is.na(Responsibilities)) %>% 
+  rownames_to_column("id") %>% 
+  mutate(Country = str_extract(Location, "\\b[^,]+$"),
+         Country = gsub("Dubai - United Arab Emirates", "United Arab Emirates", Country),
+         Country = gsub("Hong Kong", "China", Country),
+         Country = gsub("United States", "USA", Country)) %>% 
+  left_join(continents, by = "Country") %>% 
+  rename(Minimum_Qual = "Minimum Qualifications",
+         Preferred_Qual = "Preferred Qualifications")
+
+rm(continents)
+```
+
+# Questões
+
+1. Quais são os países com mais vagas anunciadas pela Google? Como você construiria um gráfico que demonstre o resultado da contagem?
+
+2. Qual o número de vagas oferecidas para o Brasil?
+
+3. Quais são as qualificações mínimas e desejáveis que o google mais exige?
+
+4. Quais skills de programação são mais pedidas nas vagas do google?
+
+5. Se você tivesse um amigo que sonha se candidatar a uma vaga no google, que habilidades e jobs você falaria para ele se desenvolver e que dicas você daria para ele? Construa um raciocínio com base nos dados que comprove seus argumentos.
+
+6. Se você quisesse montar um sistema de recomendação para a Google achar candidatos, que outras informações além dessas você adicionaria no dataset para melhorar o match com os candidatos?
+
+---
+# Os dados
+
+```{r}
+glimpse(jobs)
+```
+
+* Há 123 casos duplicados, que foram removidos
+
+* Há 15 casos em que não há informações de responsabilidades e 14 de qualificações mínimas ou preferenciais. Como não faz sentido vagas anunciadas sem descrições básicas (e isso as torna inúteis para responder as questões 3 e 4), estou considerando um potencial erro do processo de extração e eliminei as 15 observações.
+
+* Extraí o país de `Location` e guardei em `Country` e adicionei a coluna `Continent`, mesclada de um data set baixado de repositório do GitHub.
+
+---
+class: inverse, middle, center
+
+# 1.1 Quais são os países com mais vagas anunciadas pela Google?
+
+---
+class: center, middle
+
+### As 20 nações com maior número de vagas do Google
+
+```{r, results="asis"}
+# Contar frequência de anúncios por país
+country_counts <- jobs %>% 
+  count(Country, Continent, sort = TRUE)
+
+# ver 20 países com maior número de vagas
+setNames(country_counts$n[1:20], country_counts$Country[1:20])
+```
+
+O Estados Unidos se destaca como o país onde o Google mais recruta e contrata, o que é esperado dado que a empresa é norte-americana e sua sede fica no Vale do Silício, Califórnia, mais especificamente em Mountain View.
+
+Fora EUA, entre os cinco primeiros estão três países europeus (Irlanda, Inglaterra e Alemanha) e um asiátio (China).
+
+---
+class: center, middle, inverse
+
+# 1.2 Como você construiria um gráfico que demonstre o resultado da contagem?
+
+---
+class: center, middle
+
+A visualização mais básica destes dados é um gráfico de barras, ordenado pela frequência.
+
+```{r, fig.width=14, fig.height=6}
+country_counts %>% 
+  top_n(20, n) %>% 
+  ggplot(aes(x = reorder(Country, -n), y = n)) +
+  geom_bar(stat = "identity") +
+  seda::light_theme(base_size = 16) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(title = "Países com maior oferta de vagas do Google",
+       x = NULL, y = NULL)
+```
+
+---
+
+Porém, tratando de países, o continente é um atributo que ajuda a dar contexto à informação. Além disso, mais de 50% das vagas são abertas para o EUA e por isso olhar para as vagas fora do EUA pode ser útil.
+
+```{r, fig.width=14.5, fig.height=7.5, fig.retina=2}
+continent_levels = unique(jobs$Continent)
+colors <- brewer.pal(6, "Set2")
+names(colors)  <- continent_levels
+
+p1 <- country_counts %>%
+  top_n(20, n) %>% 
+  ggplot(aes(x=reorder(Country, -n), y = n / sum(n), fill = Continent)) +
+  geom_bar(stat = "identity", width = 0.8, show.legend = FALSE) +
+  geom_text(aes(label = n), vjust = -0.5, size = 3, color = "black") +
+  scale_fill_manual(values = colors) +
+  scale_y_continuous(limits = c(0, .6), breaks = seq(0, .6, .1), expand = c(0, 0)) +
+  seda::light_theme(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
+        plot.background = element_rect(colour = NA)) +
+  labs(title = "20 países com mais vagas anunciadas pelo Google",
+       x = NULL, y = NULL)
+
+p2 <- country_counts %>% 
+  group_by(Continent) %>% 
+  summarise(n = sum(n)) %>%
+  ggplot(aes(x=reorder(Continent, -n), y = n / sum(n), fill = Continent)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_text(aes(label = n), vjust = -0.5, size = 3, color = "black") +
+  scale_fill_manual(values = colors, NULL) +
+  scale_y_continuous(limits = c(0, .6), breaks = seq(0, .6, .1), expand = c(0, 0)) +
+  seda::light_theme(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
+        plot.background = element_rect(colour = NA)) +
+  labs(title = "Vagas por continente", x = NULL, y = NULL)
+
+p3 <- ggplot(country_counts[-1,] %>% arrange(Continent),
+       aes(x=reorder(Country, -n), y = n / sum(n), fill = Continent)) +
+  geom_bar(stat = "identity", width = 0.8, show.legend = FALSE) +
+  geom_text(aes(label = n), vjust = -0.5, size = 2.8, color = "black") +
+  # scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = colors) +
+  scale_y_continuous(limits = c(0, .2), breaks = seq(0, .2, .05), expand = c(0, 0)) +
+  seda::light_theme(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
+        plot.background = element_rect(colour = NA)) +
+  labs(title = "Vagas anunciadas pelo Google fora do EUA",
+       x = NULL, y = NULL)
+
+p4 <- country_counts[-1, ] %>%
+  group_by(Continent) %>% 
+  summarise(n = sum(n)) %>% 
+  ggplot(aes(x=reorder(Continent, -n), y = n / sum(n), fill = Continent)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_text(aes(label = n), vjust = -0.5, size = 2.8, color = "black") +
+  scale_fill_manual(values = colors) +
+  scale_y_continuous(limits = c(0, .6), breaks = seq(0, .6, .1), expand = c(0, 0)) +
+  seda::light_theme(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
+        plot.background = element_rect(colour = NA)) +
+  labs(title = "Vagas por continente", x = NULL, y = NULL)
+
+plot_grid(p1, p2, p3, p4, ncol = 2, nrow = 2, align = "h", rel_widths = c(2, 1))
+```
+
+---
+class: middle
+
+## Comentários
+
+* O Estados Unidos sozinho conta com $\approx 54\%$ das vagas
+
+* Fora EUA $\approx 52\%$ das vagas estão na Europa (principalmente Irlanda, Alemanha e Reino Unido). Depois vem Ásia com $\approx 35\%$.
+
+* Oceania, América do Sul, América do Norte e África são alvo de $\approx 13\%$ das vagas
+
+* O continente com menos vagas é a África, com menos de 1% das vagas fora do EUA.
+---
+class: center
+
+
+.left[
+.left-column[
+Neste caso, visualizar as vagas em um mapa também seria adequado. Apenas o número de vagas, porém, pode não ser suficiente em muitos casos. Por exemplo, pode ser que se queira analisar a distribuição das vagas pelo mundo e como se dividem pelos países em termos de área de atuação.
+]
+]
+
+.rigth-column[
+```{r, fig.width=9, fig.height=8.5, fig.retina=3}
+library(sf)
+world <- read_sf("data/mundo/mundo.shp") %>% 
+  mutate(CNTRY_NAME = gsub("Czech Republic", "Czechia", CNTRY_NAME),
+         CNTRY_NAME = gsub("United States", "USA", CNTRY_NAME))
+
+p1 <- world %>% 
+  merge(country_counts, by.x = "CNTRY_NAME", by.y = "Country", all.x = TRUE) %>% 
+  ggplot(aes(fill = ifelse(CNTRY_NAME == "USA", NA, n))) +
+  geom_sf(colour = "grey75", lwd = .05) +
+  scale_fill_viridis_c(na.value = "grey20", NULL) +
+  labs(title = "Distribuição das vagas do Google pelo mundo (fora EUA)") +
+  seda::dark_map_theme() +
+  theme(legend.position = c(.85, 1.02),
+        legend.direction = "horizontal",
+        legend.key.width = unit("10", "mm"),
+        legend.key.height = unit("3", "mm"),
+        legend.background = element_blank(),
+        plot.background = element_rect(colour = NA))
+
+top_countries <- country_counts %>% top_n(15, n) %>% pull(Country)
+top_categories <- jobs %>% count(Category, sort = TRUE) %>% pull(Category)
+
+p2 <- jobs %>% 
+  filter(Country %in% top_countries) %>% 
+  count(Country, Category) %>% 
+  ggplot(aes(x = factor(Country, levels = rev(top_countries)),
+             y = factor(Category, levels = top_categories),
+             size = n, colour = n)) +
+  geom_point(stat = "identity") +
+  scale_colour_gradient(low = "dodgerblue", high = "red3", NULL) +
+  seda::light_theme() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(subtitle = "Por categoria da vaga (nos 15 principais países)",
+       x = NULL, y = NULL) +
+  coord_flip() +
+  guides(size = FALSE)
+
+plot_grid(p1, p2, ncol = 1, rel_heights = c(1, 1.2))
+```
+]
+
+---
+class: center, middle, inverse
+
+# 2. Qual o número de vagas oferecidas para o Brasil?
+
+---
+class: center, middle
+
+.left[
+.left-column[
+```{r}
+country_counts$n[country_counts$Country == "Brazil"]
+```
+
+O número de vagas no data set para o Brasil é 12, o que corresponde a `r scales::percent(12 / nrow(jobs))` do total de vagas anunciadas. Isto coloca o Brasil em 13º colocado no ranking de países com mais vagas do Google.
+]
+]
+
+.right-column[
+```{r, results="asis"}
+knitr::kable(
+  country_counts %>%
+    mutate(Ranking = as.integer(rank(-n))) %>% 
+    select(Ranking, Country, Jobs = n) %>% 
+    top_n(15, Jobs),
+  format = "html"
+  )
+```
+]
+
+---
+class: center, middle
+
+### Questões 1 e 2 no mesmo gráfico
+
+Neste caso, queremos saber qual o total de vagas por país, mas destacar o Brasil no contexto.
+
+```{r, fig.width=14, fig.height=6, fig.retina=2}
+ggplot(country_counts[1:20,],
+       aes(x=reorder(Country, -n), y = n / sum(n),
+           fill = ifelse(Country == "Brazil", "Brasil", "Demais países"))) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_text(aes(label = n), color = "black",
+            size = ifelse(country_counts$Country[1:20] == "Brazil", 7, 4),
+            vjust = -0.5) +
+  scale_fill_manual(values = c("red", "grey20"), NULL) +
+  scale_y_continuous(limits = c(0, .6), breaks = seq(0, .6, .1), expand = c(0, 0)) +
+  labs(title = "20 países com mais vagas anunciadas pelo Google",
+       x = NULL, y = NULL) +
+  seda::light_theme(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10))
+```
+
+---
+class: center, middle, inverse
+
+# 3. Quais são as qualificações mínimas e desejáveis que o google mais exige?
+
+---
+class: middle
+
+```{r}
+qualifications <- list(
+  Minimum = jobs %>%
+    unnest_tokens(word, Minimum_Qual) %>% 
+    anti_join(stop_words),
+  Preferred =
+    words_min_qual <- jobs %>%
+    unnest_tokens(word, Preferred_Qual) %>% 
+    anti_join(stop_words)
+  )
+```
+
+```{r, fig.width=14, fig.height=8}
+p <- map(1:2,
+    ~qualifications[[.]] %>% 
+      count(word, sort = TRUE) %>% 
+      mutate(prop = prop.table(n)) %>% 
+      top_n(20, n) %>%  
+      ggplot(aes(x = reorder(word, -n), y = prop)) +
+      geom_bar(stat = "identity", fill = "grey20") +
+      labs(title = paste("Palavras mais frequentes em qualificações:",
+                         names(qualifications[.])),
+           x = NULL, y = NULL) +
+      seda::light_theme(base_size = 14) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+            plot.background = element_rect(color = NA))
+    )
+
+plot_grid(plotlist = p, ncol = 1)
+```
+
+---
+class: center, middle
+
+```{r, fig.width=15, fig.height=8}
+p1 <- jobs %>% 
+  unnest_tokens(bigram, Minimum_Qual, token = "ngrams", n = 2) %>% 
+  separate(bigram, c("w1", "w2")) %>% 
+  filter(!w1 %in% stop_words$word & !str_detect(w1, "[:digit:]")) %>% 
+  filter(!w2 %in% stop_words$word & !str_detect(w2, "[:digit:]")) %>% 
+  count(w1, w2, sort = TRUE) %>% 
+  filter(n >= 15) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_width = n, edge_alpha = n), color = "coral",
+                 arrow = arrow(length = unit(3, 'mm'), type = "closed")) +
+  scale_edge_alpha(range = c(.4, 1)) +
+  geom_node_point(size = 2) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  labs(title = "Rede de relações mais frequentes: Minimum") +
+  seda::light_map_theme(base_size = 14) +
+  theme(legend.position = "top")
+
+p2 <- jobs %>% 
+  unnest_tokens(bigram, Preferred_Qual, token = "ngrams", n = 2) %>% 
+  separate(bigram, c("w1", "w2")) %>% 
+  filter(!w1 %in% stop_words$word & !str_detect(w1, "[:digit:]")) %>% 
+  filter(!w2 %in% stop_words$word & !str_detect(w2, "[:digit:]")) %>% 
+  count(w1, w2, sort = TRUE) %>% 
+  filter(n >= 25) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_width = n, edge_alpha = n), color = "dodgerblue",
+                 arrow = arrow(length = unit(3, 'mm'), type = "closed")) +
+  scale_edge_alpha(range = c(.4, 1)) +
+  geom_node_point(size = 2) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  labs(title = "Rede de relações mais frequentes: Preferred") +
+  seda::light_map_theme(base_size = 14) +
+  theme(legend.position = "top")
+
+plot_grid(p1, p2, ncol = 2)
+```
+
+---
+### Interpretação do cenário geral
+
+* Experiência prévia é altamente requisitada e ainda mais importante enquanto requisito mínimo do que desejável. Embora o diploma apresente um peso importante, ele provavelmente não valerá muito sem que o candidato possua experiência nas áreas das vagas.
+
+* De modo geral, a empresa busca apenas um pouco mais de profissionais de áreas mais técnicas (como ciências da computação e engenharias) do que de áreas como ciências sociais, artes, linguagens e comunicação.
+
+* Fluência em conversação e escrita em inglês representa um dos principais requisitos mínimos, o que é esperado tratando-se de uma empresa global. Dependendo do local de atuação outros idiomas podem ser requisitados, sendo alemão, francês, espanhol e mandarim os mais frequentes.
+
+* Gestão (__management__) é importante tanto no nível do obrigatório como do desejável
+
+* ___management___, ___computer___, ___science___, ___engenneering___, ___marketing___, ___business___ dão ideia das áreas de conhecimento mais presentes nos requisitos mínimos / ___management___, ___business___ também são importantes entre os requisitos desejáveis, além de ___communication___ e ___technology___
+
+* ___sales___, ___developement___ , ___software___, ___design___, ___cloud___, ___data___ sugerem as skills mínimas mais presentes / ___sales___, ___cloud___, ___data___ também aparecem nas desejáveis, mas também ___analytical___, ___environment___
+
+* As habilidades e skills em si são mais importantes nas qualificações desejáveis que nas mínimas
+
+---
+### Para quais cargos o Google contrata?
+
+```{r, fig.width=14, fig.height=6}
+titles <- c("manager", "investigator", "recruiter", "specialist",
+            "consultant", "designer", "researcher", "writer", "intern", "controller",
+            "auditor", "analyst", "strategist", "director", "vendor", "administrator",
+            "engineer", "developer", "scientist", "assistant", "advocate", "lead",
+            "negociator", "head", "chief", "architect")
+
+title_words <- jobs %>% 
+  unnest_tokens(word, Title, drop = FALSE) %>% 
+  anti_join(stop_words)
+
+title_count <- title_words %>% 
+  count(Position = word, sort = TRUE) %>% 
+  mutate(prop = n / nrow(jobs)) %>% 
+  filter(Position %in% titles)
+
+ggplot(title_count, aes(x = reorder(Position, -n), y = prop)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(prop, 2)), vjust = -0.5) +
+  seda::light_theme(base_size = 16) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(title = "Posições mais frequentes", x = NULL, y = NULL)
+```
+
+Total de anúncios com estas keywords: `r length(unique(title_words$id[title_words$word %in% titles]))` de 1112
+
+---
+### Para quais áreas o Google contrata gerentes, engenheiros, analistas e desenvolvedores?
+
+```{r}
+selected_positions <- c("manager", "engineer", "analyst", "developer")
+
+positions_words <- title_words %>% 
+  filter(word %in% selected_positions) %>% 
+  rename(Position = word)
+```
+
+```{r, fig.width=15, fig.height=7.5}
+positions_words %>%
+  count(Category, Position) %>%
+  group_by(Position) %>% 
+  mutate(prop = prop.table(n)) %>% 
+  ggplot(aes(x = factor(Category, levels = top_categories),
+             y = factor(Position, levels = selected_positions),
+             fill = prop)) +
+  geom_tile() +
+  geom_text(aes(label = round(prop, 3)), color = "white") +
+  scale_fill_viridis_c() +
+  labs(title = "Frequência de posições por categoria de anúncio",
+       x = NULL, y = NULL) +
+  theme_bw(base_size = 14, base_family = "Fira Sans Condensed") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+```
+
+---
+__Gerente__
+
+O gestor é o profissional mais buscado pelo Google (35% dos anúncios) e também a posição mais transversal. As únicas áreas para as quais não há contratação de gerentes são as de _Developer Relations_, _Network Engineering_, _IT & Data Management_. O maior número de vagas vão para as áreas de _Marketing & Communications_, _Sales & Account Management_, _Program Management_, _Partnerships_ e _Finance_.
+
+__Engenheiro__
+
+É a segunda posição que mais se destaca nos anúncios do Google, com 9%. São contratados para atuar principalmente nas áreas de _Technical Solutions_, _Software Engineering_, _Hardware Engineering_ e _User Experience & Design_.
+
+__Analista__
+
+Com 5% das vagas, o cargo de analista é o 6º no ranking. A principal área de atuação do analista é _Business Strategy_, seguido de _Finance_ e _Product & Customer Support_. Outras áreas com peso relevante são _Sales Operation_, _People Operations_ e _Marketing & Communications_.
+
+__Desenvolvedor__
+
+A posição de desenvolvedor representa apenas 1% das vagas, sendo a 14ª no ranking. Atuam especificamente nas áreas de _Developer Relations_, _Marketing & Communications_ e _Sales & Account Management_.
+
+
+---
+__Trigrams mais relevantes nas qualificações mínimas, por posição__
+
+```{r, fig.width=15, fig.height=8}
+p <- grouped_tfidf(positions_words, "Minimum_Qual", "Position", 3, 25)
+plot_grid(plotlist = p, ncol = 4)
+```
+
+---
+__Trigrams mais relevantes nas qualificações desejáveis, por posição__
+
+```{r, fig.width=15, fig.height=8}
+p <- grouped_tfidf(positions_words, "Preferred_Qual", "Position", 3, 25)
+plot_grid(plotlist = p, ncol = 4)
+```
+
+---
+### Qualificações mínimas e desejáveis mais exigidas
+
+```{r, results = "asis"}
+qualificacoes_table <- tribble(
+  ~"Posição", ~"Qualificações mínimas", ~"Qualificações desejáveis",
+  "Gerente", "cadeia de suprimentos, soluções em nuvem, parcerias, relações públicas e comunicação corporativa, sistemas globais, tecnologias de mercado e negócios, canais de venda", "comunicação oral, cadeia de suprimentos, channel business model, cloud, SAAS, excelência em escrita, organização funcional, relações estabelecidas com a mídia, MBA, bancos de dados intermediários",
+  "Engenheiro", "desenvolvimento de aplicações web, geografia e território, sistemas de aprendizagem, ambientes de computação na nuvem", "sistemas distribuídos escaláveis, sistemas de experiência, tecnologias relacionadas, gestão de sistemas, desenvolvimento de aplicações web, rápida aprendizagem, proteção de dados, infraestrutura de cloud, comunicação com o cliente, tecnologias emergentes",
+  "Analista", "matemática, estatística aplicada, ciências da computação, física, engenharia de operações, econometria, bancos de dados, SQL, SAS, matlab, stata", "capacidade de avaliação de negócio, tradução e comunicação de resultados de análise, estatística, ciência da computação, ciências matemáticas e engenharia, pesquisa, liderança, dados complexos, serviços orientados ao cliente, métricas de análise, mensuração de marca, interdisciplinaridade",
+  "Desenvolvedor", "linguagens de plataformas android, java, javascript, kotlin, python, ruby, node.js, php, IOS, machine learning softwares, sdks, pipelines de análise de dados, desenvolvimento de negócios, implementação de campanhas", "arquitetura de desenvolvimento de software, desenvolvimento de aplicações móveis, conhecimento do cenário de desenvolvimento de aplicações, techonology advocacy, conhecimentos em marketing digital e indústria, excelência analítica"
+)
+
+kable(qualificacoes_table) %>%
+  kable_styling(font_size = 16)
+```
+
+Obrigatoriamente o candidato deve ter conhecimento e experiência na área.
+
+Desejavelmente o candidato deve ter experiência e demonstrar algumas habilidades.
+
+---
+class: center, middle, inverse
+
+# 4. Quais skills de programação são mais pedidas nas vagas do google?
+
+---
+
+```{r, fig.width=14, fig.height=8}
+langs <- c("sql", "python", "ruby", "java", "javascript", "node.js", "sas", "matlab", "stata", "r", "kotlin", "php", "c", "c#", "c++", "perl", "go")
+
+langs_words <- jobs %>%
+  unnest_tokens(word, Minimum_Qual, token = "ngrams", n = 2) %>%
+  separate(word, c("w1", "w2")) %>% 
+  gather(w, word, -Category) %>% 
+  filter(word %in% langs)
+
+p1 <- langs_words %>% 
+  count(word) %>% 
+  ggplot(aes(x = reorder(word, n), y = n)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(n / sum(n), 3)), hjust = -0.2) +
+  labs(title = "Linguagens de programação mais solicitadas",
+       x = NULL, y = NULL) +
+  seda::light_theme(base_size = 14) +
+  coord_flip()
+
+p2 <- langs_words %>%
+  count(Category, word, sort = TRUE) %>% 
+  ggplot(aes(x = Category, y = word, colour = n, size = n)) + 
+  geom_point() +
+  scale_colour_viridis_c(NULL) +
+  labs(title = "Por área da vaga", x = NULL, y = NULL) +
+  seda::light_theme(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  guides(size = FALSE)
+
+plot_grid(p1, p2, ncol = 1, rel_heights = c(.8, 1.2))
+```
+
+
+---
+class: center, middle, inverse
+
+# Se você tivesse um amigo que sonha se candidatar a uma vaga no google, que habilidades e jobs você falaria para ele se desenvolver e que dicas você daria para ele? Construa um raciocínio com base nos dados que comprove seus argumentos.
+
+---
+
+Considerando que __degree__, __bs__ e __ba__ estão entre as dez palavras mais frequentes na descrição das qualificações mínimas, o candidato ou candidata precisa ter um diploma de bacharel ou equivalente.
+
+Entre todas as palavras, o termo __experience__ representa 10% nas qualificações mínimas e 4,5% nas desejáveis. Além disso, o termo aparece relacionado com diversas skills (programação, liderança, gestão, desenvolvimento, comunicação...). Por isso, independentemente da área para a qual pretende postular, a experiência prática é um diferencial central.
+
+Um mestrado ou MBA também tornam o candidado mais aderente aos requisitos do Google. 
+
+Outro requisito básico é a fluência escrita e falada em inglês. Porém, aprender outro idioma além do inglês é um diferencial. Metade das contratações são para o EUA, mas há muitas unidades regionais.
+
+Dependendo da área de atuação e da posição que esse meu amigo quisesse atuar, eu também o aconselharia a considerar seriamente a possibilidade de morar fora do país. Afinal, a distribuição das vagas são altamente concentradas no EUA, na Europa e na Ásia.
+
+Independentemente da área de atuação, conhecimento e experiência em negócios, tecnologias em nuvem, vendas, marketing, boa capacidade de comunicação, softwares e plataformas como serviços podem destacar um candidato.
+
+Se, por exemplo, ele quisesse se candidatar a um cargo de analista, ele deveria considerar que a maioria desses cargos estão nas áreas de _Business Strategy_, _Sales & Account Management_ e _Finance_ e que nestas áreas são requisitadas linguagens e softwares de anaĺise de dados como python, R, SQL, SAS, stata e matlab.
+
+> Obs: A análise poderia ir além, mas o objetivo não é esgotar e sim dar uma ideia do que poderia ser construído de conhecimento a partir dos dados
+
+---
+class: center, middle, inverse
+
+# Se você quisesse montar um sistema de recomendação para a Google achar candidatos, que outras informações além dessas você adicionaria no dataset para melhorar o match com os candidatos?
+
+---
+### Variáveis que poderiam ser adicionadas
+
+.pull-left[
+Algumas informações já existem neste data set, sendo que demandaria estruturá-las para utilizar:
+
+* Formação mínima
+
+* Areas de formação
+
+* Principais skills
+
+* País
+
+* Cidade do trabalho
+]
+
+.pull-right[
+Outras informações não constam, mas poderiam ser úteis.
+
+* Faixa salarial
+
+* Tamanho da empresa
+
+* Ramo de atuação da empresa
+
+* Benefícios oferecidos
+
+* Tipo de contratação
+
+* Carga horária
+
+* Horário de trabalho
+
+* Possibilidade de home office
+
+* Nível de experiência
+]

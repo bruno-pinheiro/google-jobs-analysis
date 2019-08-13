@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Teste BI - Google Jobs</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Bruno Pinheiro" />
+    <meta name="date" content="2019-08-13" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+    <script src="libs/kePrint/kePrint.js"></script>
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Teste BI - Google Jobs
+## Processo seletivo para Data Analyst da Revelo
+### Bruno Pinheiro
+### 2019-08-13
+
+---
+
+
+
+
+
+
+
+
+
+
+# Questões
+
+1. Quais são os países com mais vagas anunciadas pela Google? Como você construiria um gráfico que demonstre o resultado da contagem?
+
+2. Qual o número de vagas oferecidas para o Brasil?
+
+3. Quais são as qualificações mínimas e desejáveis que o google mais exige?
+
+4. Quais skills de programação são mais pedidas nas vagas do google?
+
+5. Se você tivesse um amigo que sonha se candidatar a uma vaga no google, que habilidades e jobs você falaria para ele se desenvolver e que dicas você daria para ele? Construa um raciocínio com base nos dados que comprove seus argumentos.
+
+6. Se você quisesse montar um sistema de recomendação para a Google achar candidatos, que outras informações além dessas você adicionaria no dataset para melhorar o match com os candidatos?
+
+---
+# Os dados
+
+
+```
+Observations: 1,112
+Variables: 10
+$ id               &lt;chr&gt; "1", "2", "3", "4", "5", "6", "7", "8", "9", "1…
+$ Company          &lt;chr&gt; "Google", "Google", "Google", "Google", "Google…
+$ Title            &lt;chr&gt; "Google Cloud Program Manager", "Supplier Devel…
+$ Category         &lt;chr&gt; "Program Management", "Manufacturing &amp; Supply C…
+$ Location         &lt;chr&gt; "Singapore", "Shanghai, China", "New York, NY, …
+$ Responsibilities &lt;chr&gt; "Shape, shepherd, ship, and show technical prog…
+$ Minimum_Qual     &lt;chr&gt; "BA/BS degree or equivalent practical experienc…
+$ Preferred_Qual   &lt;chr&gt; "Experience in the business technology market a…
+$ Country          &lt;chr&gt; "Singapore", "China", "USA", "USA", "USA", "Ire…
+$ Continent        &lt;chr&gt; "Asia", "Asia", "North America", "North America…
+```
+
+* Há 123 casos duplicados, que foram removidos
+
+* Há 15 casos em que não há informações de responsabilidades e 14 de qualificações mínimas ou preferenciais. Como não faz sentido vagas anunciadas sem descrições básicas (e isso as torna inúteis para responder as questões 3 e 4), estou considerando um potencial erro do processo de extração e eliminei as 15 observações.
+
+* Extraí o país de `Location` e guardei em `Country` e adicionei a coluna `Continent`, mesclada de um data set baixado de repositório do GitHub.
+
+---
+class: inverse, middle, center
+
+# 1.1 Quais são os países com mais vagas anunciadas pela Google?
+
+---
+class: center, middle
+
+### As 20 nações com maior número de vagas do Google
+
+           USA        Ireland United Kingdom        Germany          China 
+           560             87             58             52             38 
+     Singapore      Australia          Japan         Taiwan          India 
+            36             33             30             27             25 
+        France    Switzerland         Brazil         Israel         Poland 
+            18             16             12             11             11 
+        Canada         Mexico         Russia    Netherlands         Sweden 
+             8              8              8              7              7 
+
+O Estados Unidos se destaca como o país onde o Google mais recruta e contrata, o que é esperado dado que a empresa é norte-americana e sua sede fica no Vale do Silício, Califórnia, mais especificamente em Mountain View.
+
+Fora EUA, entre os cinco primeiros estão três países europeus (Irlanda, Inglaterra e Alemanha) e um asiátio (China).
+
+---
+class: center, middle, inverse
+
+# 1.2 Como você construiria um gráfico que demonstre o resultado da contagem?
+
+---
+class: center, middle
+
+A visualização mais básica destes dados é um gráfico de barras, ordenado pela frequência.
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-6-1.png" width="1008" /&gt;
+
+---
+
+Porém, tratando de países, o continente é um atributo que ajuda a dar contexto à informação. Além disso, mais de 50% das vagas são abertas para o EUA e por isso olhar para as vagas fora do EUA pode ser útil.
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-7-1.png" width="1044" /&gt;
+
+---
+class: middle
+
+## Comentários
+
+* O Estados Unidos sozinho conta com `\(\approx 54\%\)` das vagas
+
+* Fora EUA `\(\approx 52\%\)` das vagas estão na Europa (principalmente Irlanda, Alemanha e Reino Unido). Depois vem Ásia com `\(\approx 35\%\)`.
+
+* Oceania, América do Sul, América do Norte e África são alvo de `\(\approx 13\%\)` das vagas
+
+* O continente com menos vagas é a África, com menos de 1% das vagas fora do EUA.
+---
+class: center
+
+
+.left[
+.left-column[
+Neste caso, visualizar as vagas em um mapa também seria adequado. Apenas o número de vagas, porém, pode não ser suficiente em muitos casos. Por exemplo, pode ser que se queira analisar a distribuição das vagas pelo mundo e como se dividem pelos países em termos de área de atuação.
+]
+]
+
+.rigth-column[
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-8-1.png" width="648" /&gt;
+]
+
+---
+class: center, middle, inverse
+
+# 2. Qual o número de vagas oferecidas para o Brasil?
+
+---
+class: center, middle
+
+.left[
+.left-column[
+
+```
+[1] 12
+```
+
+O número de vagas no data set para o Brasil é 12, o que corresponde a 1.08% do total de vagas anunciadas. Isto coloca o Brasil em 13º colocado no ranking de países com mais vagas do Google.
+]
+]
+
+.right-column[
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; Ranking &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; Country &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Jobs &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; USA &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 560 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Ireland &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 87 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 3 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; United Kingdom &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 58 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Germany &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 52 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; China &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 38 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 6 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Singapore &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 36 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 7 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Australia &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 33 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 8 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Japan &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 30 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 9 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Taiwan &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 27 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 10 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; India &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 25 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 11 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; France &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 18 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 12 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Switzerland &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 16 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 13 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Brazil &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 12 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 14 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Israel &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 11 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 14 &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; Poland &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 11 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+]
+
+---
+class: center, middle
+
+### Questões 1 e 2 no mesmo gráfico
+
+Neste caso, queremos saber qual o total de vagas por país, mas destacar o Brasil no contexto.
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-11-1.png" width="1008" /&gt;
+
+---
+class: center, middle, inverse
+
+# 3. Quais são as qualificações mínimas e desejáveis que o google mais exige?
+
+---
+class: middle
+
+
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-13-1.png" width="1008" /&gt;
+
+---
+class: center, middle
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-14-1.png" width="1080" /&gt;
+
+---
+### Interpretação do cenário geral
+
+* Experiência prévia é altamente requisitada e ainda mais importante enquanto requisito mínimo do que desejável. Embora o diploma apresente um peso importante, ele provavelmente não valerá muito sem que o candidato possua experiência nas áreas das vagas.
+
+* De modo geral, a empresa busca apenas um pouco mais de profissionais de áreas mais técnicas (como ciências da computação e engenharias) do que de áreas como ciências sociais, artes, linguagens e comunicação.
+
+* Fluência em conversação e escrita em inglês representa um dos principais requisitos mínimos, o que é esperado tratando-se de uma empresa global. Dependendo do local de atuação outros idiomas podem ser requisitados, sendo alemão, francês, espanhol e mandarim os mais frequentes.
+
+* Gestão (__management__) é importante tanto no nível do obrigatório como do desejável
+
+* ___management___, ___computer___, ___science___, ___engenneering___, ___marketing___, ___business___ dão ideia das áreas de conhecimento mais presentes nos requisitos mínimos / ___management___, ___business___ também são importantes entre os requisitos desejáveis, além de ___communication___ e ___technology___
+
+* ___sales___, ___developement___ , ___software___, ___design___, ___cloud___, ___data___ sugerem as skills mínimas mais presentes / ___sales___, ___cloud___, ___data___ também aparecem nas desejáveis, mas também ___analytical___, ___environment___
+
+* As habilidades e skills em si são mais importantes nas qualificações desejáveis que nas mínimas
+
+---
+### Para quais cargos o Google contrata?
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-15-1.png" width="1008" /&gt;
+
+Total de anúncios com estas keywords: 981 de 1112
+
+---
+### Para quais áreas o Google contrata gerentes, engenheiros, analistas e desenvolvedores?
+
+
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-17-1.png" width="1080" /&gt;
+
+---
+__Gerente__
+
+O gestor é o profissional mais buscado pelo Google (35% dos anúncios) e também a posição mais transversal. As únicas áreas para as quais não há contratação de gerentes são as de _Developer Relations_, _Network Engineering_, _IT &amp; Data Management_. O maior número de vagas vão para as áreas de _Marketing &amp; Communications_, _Sales &amp; Account Management_, _Program Management_, _Partnerships_ e _Finance_.
+
+__Engenheiro__
+
+É a segunda posição que mais se destaca nos anúncios do Google, com 9%. São contratados para atuar principalmente nas áreas de _Technical Solutions_, _Software Engineering_, _Hardware Engineering_ e _User Experience &amp; Design_.
+
+__Analista__
+
+Com 5% das vagas, o cargo de analista é o 6º no ranking. A principal área de atuação do analista é _Business Strategy_, seguido de _Finance_ e _Product &amp; Customer Support_. Outras áreas com peso relevante são _Sales Operation_, _People Operations_ e _Marketing &amp; Communications_.
+
+__Desenvolvedor__
+
+A posição de desenvolvedor representa apenas 1% das vagas, sendo a 14ª no ranking. Atuam especificamente nas áreas de _Developer Relations_, _Marketing &amp; Communications_ e _Sales &amp; Account Management_.
+
+
+---
+__Trigrams mais relevantes nas qualificações mínimas, por posição__
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-18-1.png" width="1080" /&gt;
+
+---
+__Trigrams mais relevantes nas qualificações desejáveis, por posição__
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-19-1.png" width="1080" /&gt;
+
+---
+### Qualificações mínimas e desejáveis mais exigidas
+
+&lt;table class="table" style="font-size: 16px; margin-left: auto; margin-right: auto;"&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; Posição &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; Qualificações mínimas &lt;/th&gt;
+   &lt;th style="text-align:left;"&gt; Qualificações desejáveis &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Gerente &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; cadeia de suprimentos, soluções em nuvem, parcerias, relações públicas e comunicação corporativa, sistemas globais, tecnologias de mercado e negócios, canais de venda &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; comunicação oral, cadeia de suprimentos, channel business model, cloud, SAAS, excelência em escrita, organização funcional, relações estabelecidas com a mídia, MBA, bancos de dados intermediários &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Engenheiro &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; desenvolvimento de aplicações web, geografia e território, sistemas de aprendizagem, ambientes de computação na nuvem &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; sistemas distribuídos escaláveis, sistemas de experiência, tecnologias relacionadas, gestão de sistemas, desenvolvimento de aplicações web, rápida aprendizagem, proteção de dados, infraestrutura de cloud, comunicação com o cliente, tecnologias emergentes &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Analista &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; matemática, estatística aplicada, ciências da computação, física, engenharia de operações, econometria, bancos de dados, SQL, SAS, matlab, stata &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; capacidade de avaliação de negócio, tradução e comunicação de resultados de análise, estatística, ciência da computação, ciências matemáticas e engenharia, pesquisa, liderança, dados complexos, serviços orientados ao cliente, métricas de análise, mensuração de marca, interdisciplinaridade &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Desenvolvedor &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; linguagens de plataformas android, java, javascript, kotlin, python, ruby, node.js, php, IOS, machine learning softwares, sdks, pipelines de análise de dados, desenvolvimento de negócios, implementação de campanhas &lt;/td&gt;
+   &lt;td style="text-align:left;"&gt; arquitetura de desenvolvimento de software, desenvolvimento de aplicações móveis, conhecimento do cenário de desenvolvimento de aplicações, techonology advocacy, conhecimentos em marketing digital e indústria, excelência analítica &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+Obrigatoriamente o candidato deve ter conhecimento e experiência na área.
+
+Desejavelmente o candidato deve ter experiência e demonstrar algumas habilidades.
+
+---
+class: center, middle, inverse
+
+# 4. Quais skills de programação são mais pedidas nas vagas do google?
+
+---
+
+&lt;img src="apresentacao-teste-da-revelo_files/figure-html/unnamed-chunk-21-1.png" width="1008" /&gt;
+
+
+---
+class: center, middle, inverse
+
+# Se você tivesse um amigo que sonha se candidatar a uma vaga no google, que habilidades e jobs você falaria para ele se desenvolver e que dicas você daria para ele? Construa um raciocínio com base nos dados que comprove seus argumentos.
+
+---
+
+Considerando que __degree__, __bs__ e __ba__ estão entre as dez palavras mais frequentes na descrição das qualificações mínimas, o candidato ou candidata precisa ter um diploma de bacharel ou equivalente.
+
+Entre todas as palavras, o termo __experience__ representa 10% nas qualificações mínimas e 4,5% nas desejáveis. Além disso, o termo aparece relacionado com diversas skills (programação, liderança, gestão, desenvolvimento, comunicação...). Por isso, independentemente da área para a qual pretende postular, a experiência prática é um diferencial central.
+
+Um mestrado ou MBA também tornam o candidado mais aderente aos requisitos do Google. 
+
+Outro requisito básico é a fluência escrita e falada em inglês. Porém, aprender outro idioma além do inglês é um diferencial. Metade das contratações são para o EUA, mas há muitas unidades regionais.
+
+Dependendo da área de atuação e da posição que esse meu amigo quisesse atuar, eu também o aconselharia a considerar seriamente a possibilidade de morar fora do país. Afinal, a distribuição das vagas são altamente concentradas no EUA, na Europa e na Ásia.
+
+Independentemente da área de atuação, conhecimento e experiência em negócios, tecnologias em nuvem, vendas, marketing, boa capacidade de comunicação, softwares e plataformas como serviços podem destacar um candidato.
+
+Se, por exemplo, ele quisesse se candidatar a um cargo de analista, ele deveria considerar que a maioria desses cargos estão nas áreas de _Business Strategy_, _Sales &amp; Account Management_ e _Finance_ e que nestas áreas são requisitadas linguagens e softwares de anaĺise de dados como python, R, SQL, SAS, stata e matlab.
+
+&gt; Obs: A análise poderia ir além, mas o objetivo não é esgotar e sim dar uma ideia do que poderia ser construído de conhecimento a partir dos dados
+
+---
+class: center, middle, inverse
+
+# Se você quisesse montar um sistema de recomendação para a Google achar candidatos, que outras informações além dessas você adicionaria no dataset para melhorar o match com os candidatos?
+
+---
+### Variáveis que poderiam ser adicionadas
+
+.pull-left[
+Algumas informações já existem neste data set, sendo que demandaria estruturá-las para utilizar:
+
+* Formação mínima
+
+* Areas de formação
+
+* Principais skills
+
+* País
+
+* Cidade do trabalho
+]
+
+.pull-right[
+Outras informações não constam, mas poderiam ser úteis.
+
+* Faixa salarial
+
+* Tamanho da empresa
+
+* Ramo de atuação da empresa
+
+* Benefícios oferecidos
+
+* Tipo de contratação
+
+* Carga horária
+
+* Horário de trabalho
+
+* Possibilidade de home office
+
+* Nível de experiência
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "monokai",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
